@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirror</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            cursor: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body.show-ui {
+            cursor: default;
+        }
+
+        #video-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #video {
+            transform: scaleX(-1);
+            object-fit: cover;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 20px 30px;
+            border-radius: 16px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        body.show-ui #controls {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 120px;
+            accent-color: #fff;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-value {
+            color: #fff;
+            font-size: 12px;
+            min-width: 45px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            max-width: 150px;
+        }
+
+        select option {
+            background: #333;
+            color: #fff;
+        }
+
+        #help {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            line-height: 1.8;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        body.show-ui #help {
+            opacity: 1;
+        }
+
+        #help kbd {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: inherit;
+            margin-right: 8px;
+        }
+
+        #error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 16px;
+            color: #fff;
+            text-align: center;
+            max-width: 400px;
+            display: none;
+            z-index: 200;
+        }
+
+        #error h2 {
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        #error p {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Starting camera...</div>
+
+    <div id="video-container">
+        <video id="video" autoplay playsinline muted></video>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label>Camera</label>
+            <select id="camera-select"></select>
+        </div>
+
+        <div class="control-group">
+            <label>Zoom</label>
+            <div class="control-row">
+                <input type="range" id="zoom" min="1" max="4" step="0.1" value="1">
+                <span class="control-value" id="zoom-value">1.0×</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Pan X</label>
+            <div class="control-row">
+                <input type="range" id="pan-x" min="-50" max="50" step="1" value="0">
+                <span class="control-value" id="pan-x-value">0%</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Pan Y</label>
+            <div class="control-row">
+                <input type="range" id="pan-y" min="-50" max="50" step="1" value="0">
+                <span class="control-value" id="pan-y-value">0%</span>
+            </div>
+        </div>
+
+        <button id="reset-btn">Reset</button>
+        <button id="fullscreen-btn">Fullscreen</button>
+    </div>
+
+    <div id="help">
+        <div><kbd>F</kbd> Toggle fullscreen</div>
+        <div><kbd>R</kbd> Reset view</div>
+        <div><kbd>+</kbd> / <kbd>-</kbd> Zoom in/out</div>
+        <div><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> Pan</div>
+        <div><kbd>Esc</kbd> Exit fullscreen</div>
+        <div><kbd>Space</kbd> Hide UI</div>
+    </div>
+
+    <div id="error">
+        <h2>Camera Access Required</h2>
+        <p>Please allow camera access to use the mirror. Check your browser settings and reload the page.</p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const container = document.getElementById('video-container');
+        const cameraSelect = document.getElementById('camera-select');
+        const zoomSlider = document.getElementById('zoom');
+        const panXSlider = document.getElementById('pan-x');
+        const panYSlider = document.getElementById('pan-y');
+        const zoomValue = document.getElementById('zoom-value');
+        const panXValue = document.getElementById('pan-x-value');
+        const panYValue = document.getElementById('pan-y-value');
+        const resetBtn = document.getElementById('reset-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const errorDiv = document.getElementById('error');
+        const loadingDiv = document.getElementById('loading');
+
+        let currentStream = null;
+        let hideTimeout = null;
+        let settings = {
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            cameraId: null
+        };
+
+        // Load saved settings
+        function loadSettings() {
+            const saved = localStorage.getItem('mirror-settings');
+            if (saved) {
+                try {
+                    settings = { ...settings, ...JSON.parse(saved) };
+                } catch (e) {}
+            }
+        }
+
+        // Save settings
+        function saveSettings() {
+            localStorage.setItem('mirror-settings', JSON.stringify(settings));
+        }
+
+        // Apply current settings to video
+        function applySettings() {
+            const zoom = settings.zoom;
+            const panX = settings.panX;
+            const panY = settings.panY;
+
+            video.style.transform = `scaleX(-1) scale(${zoom}) translate(${-panX}%, ${panY}%)`;
+            video.style.width = '100vw';
+            video.style.height = '100vh';
+
+            zoomSlider.value = zoom;
+            panXSlider.value = panX;
+            panYSlider.value = panY;
+            zoomValue.textContent = zoom.toFixed(1) + '×';
+            panXValue.textContent = panX + '%';
+            panYValue.textContent = panY + '%';
+        }
+
+        // Get list of cameras
+        async function getCameras() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cameras = devices.filter(d => d.kind === 'videoinput');
+
+            cameraSelect.innerHTML = '';
+            cameras.forEach((camera, index) => {
+                const option = document.createElement('option');
+                option.value = camera.deviceId;
+                option.textContent = camera.label || `Camera ${index + 1}`;
+                cameraSelect.appendChild(option);
+            });
+
+            // Select saved camera if available
+            if (settings.cameraId) {
+                const exists = cameras.some(c => c.deviceId === settings.cameraId);
+                if (exists) {
+                    cameraSelect.value = settings.cameraId;
+                }
+            }
+
+            return cameras;
+        }
+
+        // Start camera
+        async function startCamera(deviceId = null) {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                video: {
+                    width: { ideal: 3840 },
+                    height: { ideal: 2160 },
+                    frameRate: { ideal: 60 }
+                },
+                audio: false
+            };
+
+            if (deviceId) {
+                constraints.video.deviceId = { exact: deviceId };
+            }
+
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+                loadingDiv.style.display = 'none';
+
+                // Update camera list after permission granted
+                await getCameras();
+
+                if (deviceId) {
+                    settings.cameraId = deviceId;
+                    saveSettings();
+                }
+            } catch (err) {
+                console.error('Camera error:', err);
+                loadingDiv.style.display = 'none';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Show UI
+        function showUI() {
+            document.body.classList.add('show-ui');
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(hideUI, 3000);
+        }
+
+        // Hide UI
+        function hideUI() {
+            document.body.classList.remove('show-ui');
+        }
+
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Reset view
+        function resetView() {
+            settings.zoom = 1;
+            settings.panX = 0;
+            settings.panY = 0;
+            applySettings();
+            saveSettings();
+        }
+
+        // Event listeners
+        zoomSlider.addEventListener('input', () => {
+            settings.zoom = parseFloat(zoomSlider.value);
+            applySettings();
+            saveSettings();
+        });
+
+        panXSlider.addEventListener('input', () => {
+            settings.panX = parseInt(panXSlider.value);
+            applySettings();
+            saveSettings();
+        });
+
+        panYSlider.addEventListener('input', () => {
+            settings.panY = parseInt(panYSlider.value);
+            applySettings();
+            saveSettings();
+        });
+
+        cameraSelect.addEventListener('change', () => {
+            startCamera(cameraSelect.value);
+        });
+
+        resetBtn.addEventListener('click', resetView);
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+        // Mouse movement shows UI
+        document.addEventListener('mousemove', showUI);
+        document.addEventListener('click', showUI);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            showUI();
+
+            switch (e.key.toLowerCase()) {
+                case 'f':
+                    toggleFullscreen();
+                    break;
+                case 'r':
+                    resetView();
+                    break;
+                case '+':
+                case '=':
+                    settings.zoom = Math.min(4, settings.zoom + 0.1);
+                    applySettings();
+                    saveSettings();
+                    break;
+                case '-':
+                    settings.zoom = Math.max(1, settings.zoom - 0.1);
+                    applySettings();
+                    saveSettings();
+                    break;
+                case 'arrowleft':
+                    settings.panX = Math.max(-50, settings.panX - 2);
+                    applySettings();
+                    saveSettings();
+                    break;
+                case 'arrowright':
+                    settings.panX = Math.min(50, settings.panX + 2);
+                    applySettings();
+                    saveSettings();
+                    break;
+                case 'arrowup':
+                    settings.panY = Math.max(-50, settings.panY - 2);
+                    applySettings();
+                    saveSettings();
+                    break;
+                case 'arrowdown':
+                    settings.panY = Math.min(50, settings.panY + 2);
+                    applySettings();
+                    saveSettings();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    hideUI();
+                    clearTimeout(hideTimeout);
+                    break;
+                case 'escape':
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    }
+                    break;
+            }
+        });
+
+        // Scroll wheel for zoom
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            showUI();
+
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            settings.zoom = Math.max(1, Math.min(4, settings.zoom + delta));
+            applySettings();
+            saveSettings();
+        }, { passive: false });
+
+        // Initialize
+        loadSettings();
+        applySettings();
+        startCamera(settings.cameraId);
+
+        // Initially show UI then hide
+        showUI();
+    </script>
+</body>
+</html>
