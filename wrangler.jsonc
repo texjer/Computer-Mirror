@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Static-assets-only Worker: no script, Cloudflare serves index.html.
+  // Replaces the mac-mirror Vercel project (mirror.texs.org).
+  "name": "mirror",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./public" }
+}
