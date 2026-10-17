@@ -1,9 +1,13 @@
 # /commitpush extras — mac-mirror
 
-Pushing `main` deploys production twice until the cutover: Cloudflare Workers Builds
-deploys the static-assets Worker `mirror`, and Vercel's GitHub integration builds
-mirror.texs.org (Vercel project `mac-mirror`) as before. Never run `npm run deploy` on
-top of a push; that's a second Worker deploy over the one the push started.
+mirror.texs.org is served by the Worker `mirror` since 2026-10-17 (a zone route
+`mirror.texs.org/*` on the proxied CNAME, see wrangler.jsonc). Pushing `main` has
+Cloudflare Workers Builds deploy it; Vercel's GitHub integration still builds the idle
+`mac-mirror` project until that project is deleted. Never run `npm run deploy` on top of
+a push; that's a second Worker deploy over the one the push started.
+
+Rollback: flip the mirror.texs.org CNAME back to DNS only in the texs.org zone; Vercel
+answers again at once (the route only fires on proxied traffic).
 
 ## Workers Builds settings (Worker `mirror` → Settings → Builds)
 

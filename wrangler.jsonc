@@ -4,5 +4,8 @@
   // Replaces the mac-mirror Vercel project (mirror.texs.org).
   "name": "mirror",
   "compatibility_date": "2026-09-01",
-  "assets": { "directory": "./public" }
+  "assets": { "directory": "./public" },
+  // Zone route, not a Workers custom domain: the hostname keeps its (proxied) CNAME, so the
+  // cutover was a proxy flip with no DNS gap. A custom domain would need the record deleted first.
+  "routes": [{ "pattern": "mirror.texs.org/*", "zone_name": "texs.org" }]
 }
